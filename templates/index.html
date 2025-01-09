@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Object Detection</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin: 20px; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        form { display: inline-block; margin-top: 20px; }
+        input[type="file"], button { padding: 10px; margin: 10px; border: 1px solid #ccc; border-radius: 5px; }
+        button { background-color: #007bff; color: white; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        #loading { display: none; margin: 20px; }
+        #progress-bar-container { width: 80%; max-width: 400px; margin: auto; background: #ddd; height: 20px; border-radius: 10px; overflow: hidden; }
+        #progress-bar { height: 100%; width: 0%; background: #28a745; transition: width 0.4s; }
+        #results { margin: 20px; display: flex; justify-content: space-around; gap: 30px; }
+        .image-box { width: 45%; text-align: left; }
+        .image-box img { max-width: 100%; height: auto; }
+    </style>
+</head>
+<body>
+    <h1>Upload an Image for FSO</h1>
+    <form id="upload-form" action="/upload" method="POST" enctype="multipart/form-data">
+        <input type="file" name="image" accept="image/*" required>
+        <button type="submit">Upload</button>
+    </form>
+    <div id="loading">
+        <p>Processing image... <span id="progress-percentage">0%</span></p>
+        <div id="progress-bar-container">
+            <div id="progress-bar"></div>
+        </div>
+    </div>
+    <div id="results"></div>
+
+    <script>
+        document.getElementById('upload-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const formData = new FormData(this);
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', '/upload', true);
+
+            // Show loading UI
+            document.getElementById('loading').style.display = 'block';
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-percentage');
+
+            // Poll progress
+            const interval = setInterval(() => {
+                fetch('/progress')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.percentage >= 0) {
+                            progressBar.style.width = data.percentage + '%';
+                            progressText.textContent = data.percentage + '%';
+                        }
+                        if (data.percentage === 100) {
+                            clearInterval(interval);
+                            document.getElementById('results').innerHTML = `
+                                <div class="image-box">
+                                    <h3>Original Image</h3>
+                                    <img src="${data.original_image}" alt="Original Image">
+                                    <p>Size: ${data.original_image_size} KB</p>
+                                </div>
+                                <div class="image-box">
+                                    <h3>Processed Image</h3>
+                                    <img src="${data.processed_image}" alt="Processed Image">
+                                    <p>Size: ${data.processed_image_size} KB</p>
+                                </div>`;
+                        }
+                    });
+            }, 500);
+
+            xhr.send(formData);
+        });
+    </script>
+</body>
+</html>
